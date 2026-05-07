@@ -1,0 +1,48 @@
+# Logs
+logs/
+*.log
+npm-debug.log*
+lerna-debug.log*
+
+# Runtime data and caches
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+out/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+
+# Package manager caches
+.npm
+.pnp.*
+
+# Vite / frontend tooling
+.vite/
+
+# Docker local files
+.docker-data/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
