@@ -25,7 +25,7 @@
 ## 项目结构
 
 ```
-F:/project/musicObj2/
+ai-music/
 ├── docker-compose.yml
 ├── Dockerfile
 ├── .env.example
@@ -312,8 +312,10 @@ PORT=4000 node app.js
 我们的 `netease.service.ts` 封装对 NeteaseCloudMusicApi 的调用：
 
 ```ts
+import { config } from './config';
+
 class NeteaseService {
-  private baseUrl = 'http://localhost:3001';
+  private baseUrl = config.neteaseApiUrl;
 
   async getLoginQRKey(): Promise<string>
   async checkQRStatus(key: string): Promise<{ code: number; cookie: string }>
@@ -455,6 +457,10 @@ services:
 NETEASE_API_URL=http://netease-api:3000
 GEMINI_API_KEY=xxx
 PORT=3000
+NODE_ENV=production
+DB_PATH=./data/radio.db
+TTS_CACHE_DIR=./data/tts-cache
+LOG_LEVEL=info
 ```
 
 ### Dockerfile
