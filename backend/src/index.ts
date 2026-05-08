@@ -4,8 +4,11 @@ import cors from 'cors';
 import express from 'express';
 
 import { config } from './config.js';
+import { initializeDatabase } from './db/schema.js';
 
 const app = express();
+
+initializeDatabase();
 
 app.use(cors());
 app.use(express.json());
