@@ -285,8 +285,8 @@ PORT=4000 node app.js
 
 | 用途 | 接口 | 参数 | 说明 |
 |------|------|------|------|
-| 播放 URL | `/music/url` | `id`(支持逗号分隔) | `br` 可选码率：`128000`/`320000`/`999000` |
-| 新版 URL | `/song/url/v1` | `id`, `level` | 按音质等级获取 |
+| 播放 URL | `/song/url` | `id`(支持逗号分隔) | `br` 可选码率：`128000`/`320000`/`999000` |
+| 新版 URL | `/song/url/v1` | `id`, `level` | 按音质等级获取（T09 默认使用） |
 | 歌曲详情 | `/song/detail` | `ids`(逗号分隔) | 返回歌曲名、艺术家、专辑、封面 |
 | 歌词 | `/lyric` | `id` | 获取歌曲歌词 |
 | 是否可用 | `/check/music` | `id` | 检测歌曲版权状态 |
@@ -321,7 +321,8 @@ class NeteaseService {
   async checkQRStatus(key: string): Promise<{ code: number; cookie: string }>
   async getUserPlaylists(uid: string): Promise<Playlist[]>
   async getPlaylistTracks(playlistId: string): Promise<Track[]>
-  async getTrackUrl(trackId: string, br?: number): Promise<string>
+  async getTrackUrl(trackId: string, level?: string): Promise<string | null>
+  // 默认使用 /song/url/v1，level 可选值：standard/higher/exhigh/lossless
   async getTrackDetail(trackIds: string[]): Promise<TrackDetail[]>
   async search(keyword: string, type?: number): Promise<SearchResult>
   async checkMusic(trackId: string): Promise<boolean>
@@ -330,7 +331,7 @@ class NeteaseService {
 
 ### 注意事项
 
-- **版权限制**：部分歌曲 `/music/url` 返回 403，可尝试 `/song/url/v1` 或公开兜底地址 `https://music.163.com/song/media/outer/url?id={id}.mp3`
+- **版权限制**：部分歌曲 `/song/url/v1` 返回 403，可尝试 `/song/url` 或公开兜底地址 `https://music.163.com/song/media/outer/url?id={id}.mp3`
 - **缓存机制**：相同 URL 2 分钟内返回缓存，可加 `?timestamp=xxx` 绕过
 - **登录频率**：登录接口不要频繁调用，否则触发 503 或 IP 封禁
 - **海外服务器**：需传 `realIP` 参数指定国内 IP 避免限制
