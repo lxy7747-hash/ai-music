@@ -8,6 +8,8 @@ import { HttpError } from '../middleware/error-handler.js';
 
 export const streamRoutes = Router();
 
+// router.use(authMiddleware); // TODO: T14
+
 const cacheRoot = path.resolve(process.cwd(), config.ttsCacheDir);
 
 streamRoutes.get('/audio/*', (req, res, next) => {

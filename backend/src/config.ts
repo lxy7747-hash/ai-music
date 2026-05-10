@@ -33,4 +33,8 @@ export const config = {
   ttsCacheDir: process.env.TTS_CACHE_DIR ?? './data/tts-cache',
   logLevel: process.env.LOG_LEVEL ?? 'debug',
   cookieEncryptionKey: process.env.COOKIE_ENCRYPTION_KEY,
+  corsOrigins: (process.env.CORS_ORIGIN ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
 } as const;

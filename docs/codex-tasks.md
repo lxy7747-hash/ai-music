@@ -467,7 +467,7 @@ backend/src/services/
 
 ---
 
-## T10 — API 路由实现
+## [x] T10 — API 路由实现
 
 **优先级**: 🟡 Medium  
 **预计耗时**: 2 小时  

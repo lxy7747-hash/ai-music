@@ -5,6 +5,8 @@ import { weatherService } from '../services/weather.service.js';
 
 export const weatherRoutes = Router();
 
+// router.use(authMiddleware); // TODO: T14
+
 weatherRoutes.get(
   '/',
   asyncHandler(async (req, res) => {

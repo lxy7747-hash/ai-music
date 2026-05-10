@@ -4,10 +4,7 @@ import { config } from '../config.js';
 
 const localOrigins = [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/];
 
-const productionOrigins = (process.env.CORS_ORIGIN ?? '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
+const productionOrigins = config.corsOrigins;
 
 const corsOptions: CorsOptions = {
   credentials: true,

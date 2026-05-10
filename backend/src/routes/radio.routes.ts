@@ -5,6 +5,8 @@ import { radioEngineService } from '../services/radio-engine.service.js';
 
 export const radioRoutes = Router();
 
+// router.use(authMiddleware); // TODO: T14
+
 radioRoutes.post(
   '/start',
   asyncHandler(async (req, res) => {
