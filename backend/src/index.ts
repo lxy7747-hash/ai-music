@@ -1,6 +1,11 @@
 import 'dotenv/config';
 
+import path from 'node:path';
+
+import { config as dotenvConfig } from 'dotenv';
 import express from 'express';
+
+dotenvConfig({ path: path.resolve(process.cwd(), '..', '.env') });
 
 import { config } from './config.js';
 import { initializeDatabase } from './db/schema.js';
