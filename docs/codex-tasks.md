@@ -698,13 +698,308 @@ frontend/src/main.ts     (修改：注册 service worker)
 
 ---
 
+## T-Smoke 系列 — 集成验证
+
+> **背景**：T01–T13 只保证编码完成 + 静态检查通过，从未在真实环境运行过。
+> 本系列任务的目标是跑通一次真实闭环，暴露集成问题。
+>
+> **拆分原则**：严格按 AGENTS.md「一次一个任务」执行，每个子任务完成后 commit 并等待指令。
+>
+> **角色边界**：
+> - 🤖 **Codex** 负责：代码修改、静态检查（build/lint/type-check）、本地可自动验证的动作
+> - 👤 **人类** 负责：扫二维码、听音频、验证需要真实账号/密钥/外网的步骤
+> - 🔍 **Claude** 负责：每个子任务 commit 后审查
+
+---
+
+## T-Smoke-1 — 登录闭环修复
+
+**优先级**: 🔴 Critical  
+**预计耗时**: 1 小时  
+**前置依赖**: T13  
+**执行者**: 🤖 Codex
+
+### 目标
+修复登录链路的断点：扫码成功后 cookie 未入库、`/api/auth/status` 写死返回未登录、网易云 API 调用不带 cookie。
+
+### 涉及文件
+- `backend/src/routes/auth.routes.ts`（修改）
+- `backend/src/routes/playlist.routes.ts`（修改）
+- `backend/src/services/netease.service.ts`（修改）
+- `backend/src/services/user.service.ts`（新建，用户持久化封装）
+- `frontend/src/views/LoginView.vue`（修改）
+- `frontend/src/stores/user.ts`（修改）
+
+### 验收标准
+
+**user.service.ts（新建）**
+- [ ] `upsertUser({ neteaseUid, nickname?, avatarUrl?, cookie }): User`：写入或更新 `users` 表
+- [ ] `getCurrentUser(): User | null`：按 `created_at` 或 `id` 降序取最新一条（MVP 简化：仅支持单用户）
+- [ ] 不在此任务做 cookie 加密（留给 T14）
+
+**auth.routes.ts**
+- [ ] `POST /api/auth/qr-check`：收到 `code === 803` 时：
+  - 调用 `neteaseService.getLoginStatus(cookie)` 获取 `netease_uid` 和昵称
+  - 通过 `userService.upsertUser` 写入 DB
+  - 返回 `{ code, loggedIn: true, user: { neteaseUid, nickname } }`
+- [ ] `GET /api/auth/status`：
+  - 从 DB 读取当前用户，返回 `{ loggedIn: boolean, user: { neteaseUid, nickname } | null }`
+- [ ] 新增 `POST /api/auth/logout`：清空 DB 中的用户记录
+
+**netease.service.ts**
+- [ ] `request()` 增加可选 `cookie` 参数，通过 `Cookie` header 传递给 NeteaseCloudMusicApi
+- [ ] 新增 `getLoginStatus(cookie): Promise<{ neteaseUid, nickname, avatarUrl }>`（调用 `/login/status`）
+- [ ] `getUserPlaylists / getPlaylistTracks / getTrackUrl` 等方法增加 `cookie` 参数透传
+
+**playlist.routes.ts**
+- [ ] 移除 `uid` 查询参数校验：从 `userService.getCurrentUser()` 自动读取
+- [ ] 调用 `neteaseService.getUserPlaylists` 时携带当前用户 cookie
+- [ ] 未登录时返回 401 `{ error: { code: "NOT_LOGGED_IN" } }`
+
+**LoginView.vue**
+- [ ] 扫码检查循环：`qrCheck` 返回 `code === 803` 时调用 `userStore.refreshStatus()`，然后 `router.push('/playlists')`
+- [ ] （保留 QR key 文字展示作为调试，不要求真正渲染二维码图片）
+
+**user store**
+- [ ] `refreshStatus()` 使用后端真实状态覆盖本地 `loggedIn/nickname`
+
+### 完成流程
+1. 阅读本任务
+2. 说明修改计划
+3. 按文件清单修改
+4. `cd backend && npm run build && npm run lint`
+5. `cd frontend && npm run type-check && npm run build`
+6. 标记本任务 `[x]`
+7. 单个 commit：`feat: implement login persistence and cookie passthrough (T-Smoke-1)`
+8. 输出 `git diff --stat`
+9. **停下，等待指令**
+
+### 注意事项
+- 不要引入新依赖
+- 不要做 cookie 加密（T14 会做）
+- 鉴权中间件的 TODO 继续保留，暂不实现
+- `userService` 应使用 `db.prepare` 参数化查询，不拼接 SQL
+
+---
+
+## T-Smoke-2 — 环境对齐修复（端口 + Dockerfile + TTS 导入）
+
+**优先级**: 🔴 Critical  
+**预计耗时**: 45 分钟  
+**前置依赖**: T-Smoke-1  
+**执行者**: 🤖 Codex
+
+### 目标
+修复三个会直接阻止 smoke 启动的问题：
+1. **端口冲突**：后端和 NeteaseCloudMusicApi 都默认 3000 端口
+2. **Dockerfile 编译失败**：alpine 缺 `better-sqlite3` 的 native 编译依赖
+3. **TTS 导入路径未验证**：`edge-tts/out/index.js` 可能不存在
+
+### 涉及文件
+- `.env.example`（修改）
+- `frontend/vite.config.ts`（修改）
+- `Dockerfile`（修改）
+- `docker-compose.yml`（核对）
+- `backend/src/services/tts.service.ts`（修改，如 import 失败）
+- `docs/codex-tasks.md`（在本任务"修复记录"小节写入结果）
+
+### 验收标准
+
+**端口方案（统一约定）**
+- [ ] 后端 `PORT=3100`
+- [ ] NeteaseCloudMusicApi 保持 `3000`
+- [ ] 前端 vite dev server 默认 `5173`，proxy `/api` → `http://localhost:3100`
+- [ ] `.env.example` 的 `PORT=3000` 改为 `PORT=3100`
+- [ ] `.env.example` 的 `NETEASE_API_URL` 注释明确：本地 `http://localhost:3000`，Docker `http://netease-api:3000`
+- [ ] `frontend/vite.config.ts` 的 proxy target 改为 `http://localhost:3100`
+- [ ] `docker-compose.yml` 内部仍用 3000（容器内独立网络），外部暴露保持 `${PORT:-3100}:3100`
+
+**Dockerfile**
+- [ ] 在所有包含 `npm ci` 的 stage 中增加原生编译依赖 `apk add --no-cache python3 make g++`
+- [ ] 或者改 base 镜像为 `node:20-bookworm-slim` 并用 `apt-get install -y python3 make g++`
+- [ ] **不要执行 `docker build`**（人类在 T-Smoke-5 验证），本任务只改 Dockerfile 文本
+
+**edge-tts 验证**
+- [ ] 检查 `node_modules/edge-tts/` 实际的导出入口
+- [ ] 如果 `edge-tts/out/index.js` 不存在，按以下优先级选择：
+  1. 查 `package.json` 的 `main` 字段，改为正确路径
+  2. 若无法静态导入，改用 `child_process` 调用 `npx edge-tts` CLI
+- [ ] 修改后在 `tts.service.ts` 里加一个 `test()` 方法：不调真服务，只验证 import 不抛错（人类验证环节会真调）
+
+**修复记录（写入本任务末尾）**
+- [ ] edge-tts 的实际导入路径是：__________
+- [ ] 端口方案决策：__________
+
+### 完成流程
+同 T-Smoke-1，commit message：`fix: align dev ports, docker deps, tts import path (T-Smoke-2)`
+
+### 注意事项
+- 端口改动会影响所有"本地启动"文档，顺便更新 README 的端口章节（如果存在）
+- `.env.example` 和代码默认值要保持一致，否则新用户首次启动就会困惑
+
+---
+
+## T-Smoke-3 — 本地后端集成验证（人机协作）
+
+**优先级**: 🔴 Critical  
+**预计耗时**: 1 小时  
+**前置依赖**: T-Smoke-2  
+**执行者**: 👤 人类为主 + 🤖 Codex 修 bug
+
+### 目标
+人类启动本地服务，验证后端 API 可用性。过程中 Codex 按人类反馈修 bug。
+
+### 前置条件（人类）
+- [ ] 已在 `.env` 填入真实 `GEMINI_API_KEY`
+- [ ] 有网易云账号、手机可扫二维码
+- [ ] 可访问 Gemini（翻墙环境就绪）
+
+### 执行步骤（人类执行，Codex 待命）
+
+**启动 3 个终端**
+- [ ] 终端 A：`npx NeteaseCloudMusicApi`（监听 3000）
+- [ ] 终端 B：`cd backend && npm run dev`（监听 3100）
+- [ ] 终端 C：`cd frontend && npm run dev`（监听 5173）
+
+**API 层验证（curl / Postman，不用 UI）**
+- [ ] `GET http://localhost:3100/health` 返回 `status: ok`
+- [ ] `POST http://localhost:3100/api/auth/qr-key` 返回 `key`
+- [ ] 调网易云 `POST http://localhost:3000/login/qr/create?key=<key>&qrimg=true` 拿到二维码 base64，用图片查看器打开扫码
+- [ ] 轮询 `POST http://localhost:3100/api/auth/qr-check` body `{ key }` 直到 `code === 803`
+- [ ] `GET http://localhost:3100/api/auth/status` 返回 `loggedIn: true` 和用户信息
+- [ ] `GET http://localhost:3100/api/playlists`（无 uid）返回当前用户歌单
+- [ ] `GET http://localhost:3100/api/weather?lat=22.3193&lon=114.1694` 返回天气
+- [ ] 选一个歌单 id，`GET /api/playlists/:id` 返回歌曲列表
+- [ ] `POST /api/playlists/:id/analyze` 返回 LLM 分析结果
+
+### 人类提交反馈的格式
+遇到问题时把以下信息贴给 Claude：
+```
+步骤：<上面哪一步>
+命令：<curl 命令>
+期望：<期望响应>
+实际：<实际响应 + 后端日志>
+```
+
+### Codex 修 bug 的边界
+- ✅ 允许修 auth / playlist / netease / weather / llm 五个服务中的 bug
+- ✅ 允许修改响应格式、错误处理、cookie 传递逻辑
+- ❌ 不要改数据库 schema
+- ❌ 不要改前端代码（前端由 T-Smoke-4 验证）
+- 每修一个 bug 单独 commit：`fix: <问题> (T-Smoke-3)`
+
+### 退出条件
+- 上述所有 curl 步骤都返回 2xx
+- 或者人类决定 skip 某步并记录原因到本任务"遗留问题"小节
+
+### 完成标记
+- [ ] 全部通过 → 人类在本任务末尾写一行 `通过时间：YYYY-MM-DD HH:MM`
+- [ ] 部分通过 → 列出遗留问题和对策
+
+---
+
+## T-Smoke-4 — 前端 + 电台闭环验证（人机协作）
+
+**优先级**: 🔴 Critical  
+**预计耗时**: 1 小时  
+**前置依赖**: T-Smoke-3  
+**执行者**: 👤 人类为主 + 🤖 Codex 修 bug
+
+### 目标
+用真实浏览器跑通电台播放闭环。
+
+### 执行步骤（人类执行）
+- [ ] 浏览器打开 `http://localhost:5173`
+- [ ] 进入 `/login`，点击"生成 Key"、"检查状态"，期间手机扫码
+- [ ] 扫码成功后自动跳转 `/playlists`（或手动进入）
+- [ ] 页面自动显示歌单（不需要手输 uid）
+- [ ] 选一个歌单 → 点击"启动电台"
+- [ ] 页面跳转到 `/radio`
+- [ ] **听到**：DJ 中文播报音频
+- [ ] DJ 播完自动切到第一首歌
+- [ ] 第一首歌播放途中，后端日志显示预生成下一段
+- [ ] 手动点"下一段"，切换正常
+- [ ] 点"暂停"/"恢复"/"停止"均按预期工作
+
+### 常见问题预案（人类遇到后贴给 Claude）
+
+| 现象 | 可能原因 |
+|---|---|
+| DJ 音频无声 | edge-tts 没生成文件 / URL 路径不对 |
+| 歌曲 URL 403 | 版权保护，需要测试 fallback URL |
+| 启动电台 20+ 秒无响应 | LLM 串行调用，正常；后续任务优化 |
+| LLM JSON.parse 失败 | Gemini 返回 markdown fence 包裹的 JSON，需要剥离 |
+| 媒体锁屏控制不生效 | Media Session API 在 HTTP 环境可能被限制，HTTPS 下再验证 |
+
+### Codex 修 bug 的边界
+- ✅ 允许修前端组件、store、composable、view
+- ✅ 允许修后端 `radioEngineService`（LLM 解析、错误处理）
+- ❌ 不要大改 DB schema
+- 每修一个 bug 单独 commit：`fix: <问题> (T-Smoke-4)`
+
+### 完成标记
+- [ ] 能从 0 启动到听完 DJ + 第一首歌 → 在本任务末尾写 `通过时间：YYYY-MM-DD HH:MM`
+- [ ] 有遗留问题 → 列入本任务"遗留问题"小节
+
+---
+
+## T-Smoke-5 — Docker 部署验证（可选）
+
+**优先级**: 🟡 Medium  
+**预计耗时**: 30 分钟  
+**前置依赖**: T-Smoke-4 通过  
+**执行者**: 👤 人类 + 🤖 Codex 修 Dockerfile
+
+### 目标
+确认 `docker compose up` 能启动整套服务。
+
+### 执行步骤（人类）
+- [ ] `docker compose build` 构建成功（重点看 `better-sqlite3` 编译是否通过）
+- [ ] `docker compose up -d` 启动双容器
+- [ ] `docker compose logs -f ai-radio` 无报错
+- [ ] 浏览器访问 `http://localhost:3100` 能打开前端
+- [ ] 完成一次登录 + 启动电台（冒烟）
+
+### 如失败
+- 失败日志贴给 Claude，Codex 修 `Dockerfile` / `docker-compose.yml`，继续单任务 commit
+
+### 完成标记
+- [ ] `通过时间：YYYY-MM-DD HH:MM`，加到本任务末尾
+- [ ] 或标记 skip + 原因
+
+---
+
+## T-Smoke-6 — 闭环报告（人类）
+
+**优先级**: 🟡 Medium  
+**预计耗时**: 15 分钟  
+**前置依赖**: T-Smoke-3 和 T-Smoke-4 通过（T-Smoke-5 可选）  
+**执行者**: 👤 人类
+
+### 目标
+把整个 smoke 过程落成文档，供下次部署参考。
+
+### 产出
+- [ ] `docs/smoke-report.md`，包含：
+  - smoke 通过时间
+  - 每个子任务的通过 / skip 状态
+  - 发现并修复的 bug 列表（commit hash 链接）
+  - 遗留问题 + 对应后续任务编号（T14 / T17 / T18 等）
+  - "本地启动步骤"定版（可粘贴给别人快速跑起来）
+
+### 完成标记
+- [ ] 提交文档：`docs: smoke test report (T-Smoke-6)`
+- [ ] T-Smoke 系列全部标 `[x]`
+
+---
+
 ## 后续扩展任务（暂不执行）
 
-| 编号 | 任务 | 时机 |
-|------|------|------|
-| T14 | Cookie AES 加密存储 | T08 完成后可做 |
-| T15 | LLM prompt 模板文件化（从代码抽到 `.md` 文件） | T09 完成后 |
-| T16 | 添加请求速率限制（express-rate-limit） | T10 完成后 |
-| T17 | 添加结构化日志（pino） | T10 完成后 |
-| T18 | 歌单分析结果缓存（避免重复调用 LLM） | 功能稳定后 |
-| T19 | 电台模式扩展（时间模式、歌单巡游、随机发现） | 天气模式完成后 |
+| 编号 | 任务 | 重要性 | 时机 |
+|------|------|--------|------|
+| T14 | Cookie AES 加密存储 | 🔴 高 | T-Smoke 完成后优先做 |
+| T15 | LLM prompt 模板文件化（从代码抽到 `.md` 文件） | 🟢 低 | 需要频繁调优 DJ 脚本时 |
+| T16 | 添加请求速率限制（express-rate-limit） | 🟡 中低 | 部署到公网时 |
+| T17 | 添加结构化日志（pino） | 🟡 中 | T-Smoke 后做，方便排查 |
+| T18 | 歌单分析结果缓存（避免重复调用 LLM） | 🟠 中高 | 功能稳定后优先做 |
+| T19 | 电台模式扩展（时间模式、歌单巡游、随机发现） | 🟢 低 | 天气模式完成后 |
