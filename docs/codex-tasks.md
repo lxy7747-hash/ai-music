@@ -655,7 +655,7 @@ frontend/src/composables/
 
 ---
 
-## T13 — PWA + 打磨
+## [x] T13 — PWA + 打磨
 
 **优先级**: 🟢 Low  
 **预计耗时**: 1.5 小时  

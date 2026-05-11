@@ -102,5 +102,9 @@ export const useRadioStore = defineStore('radio', {
         this.error = error instanceof Error ? error.message : 'Failed to stop radio';
       }
     },
+    markStopped(reason: string) {
+      this.status = 'stopped';
+      this.error = reason;
+    },
   },
 });

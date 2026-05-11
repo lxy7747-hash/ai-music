@@ -1,6 +1,10 @@
 <template>
   <AppShell>
-    <router-view />
+    <router-view v-slot="{ Component }">
+      <transition mode="out-in" name="route-fade">
+        <component :is="Component" />
+      </transition>
+    </router-view>
   </AppShell>
 </template>
 

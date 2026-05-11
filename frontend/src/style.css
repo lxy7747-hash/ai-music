@@ -26,3 +26,16 @@ button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+.route-fade-enter-active,
+.route-fade-leave-active {
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+}
+
+.route-fade-enter-from,
+.route-fade-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
