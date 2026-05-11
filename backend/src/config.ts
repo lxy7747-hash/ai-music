@@ -27,7 +27,7 @@ const optionalIntEnv = (name: string, defaultValue: number): number => {
 export const config = {
   neteaseApiUrl: process.env.NETEASE_API_URL ?? 'http://localhost:3000',
   geminiApiKey: requiredEnv('GEMINI_API_KEY'),
-  port: optionalIntEnv('PORT', 3000),
+  port: optionalIntEnv('PORT', 3100),
   nodeEnv: process.env.NODE_ENV ?? 'development',
   dbPath: process.env.DB_PATH ?? './data/radio.db',
   ttsCacheDir: process.env.TTS_CACHE_DIR ?? './data/tts-cache',

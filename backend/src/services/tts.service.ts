@@ -14,6 +14,10 @@ class TtsService {
     await this.withTimeout(ttsSave(text, outputPath, { voice }), this.timeoutMs);
   }
 
+  test(): boolean {
+    return typeof ttsSave === 'function';
+  }
+
   private async exists(path: string): Promise<boolean> {
     try {
       await access(path);

@@ -10,7 +10,7 @@ services:
   ai-radio:
     build: .
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-3100}:3100"
     depends_on:
       - netease-api
     volumes:
@@ -19,4 +19,5 @@ services:
     restart: unless-stopped
     environment:
       - TZ=Asia/Shanghai
+      - PORT=3100
       - NETEASE_API_URL=http://netease-api:3000

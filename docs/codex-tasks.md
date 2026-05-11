@@ -782,7 +782,7 @@ frontend/src/main.ts     (修改：注册 service worker)
 
 ---
 
-## T-Smoke-2 — 环境对齐修复（端口 + Dockerfile + TTS 导入）
+## [x] T-Smoke-2 — 环境对齐修复（端口 + Dockerfile + TTS 导入）
 
 **优先级**: 🔴 Critical  
 **预计耗时**: 45 分钟  
@@ -827,8 +827,8 @@ frontend/src/main.ts     (修改：注册 service worker)
 - [ ] 修改后在 `tts.service.ts` 里加一个 `test()` 方法：不调真服务，只验证 import 不抛错（人类验证环节会真调）
 
 **修复记录（写入本任务末尾）**
-- [ ] edge-tts 的实际导入路径是：__________
-- [ ] 端口方案决策：__________
+- [x] edge-tts 的实际导入路径是：`import { ttsSave } from 'edge-tts/out/index.js';`
+- [x] 端口方案决策：后端 3100 / 网易云 3000 / 前端 5173 / Docker 映射 `${PORT:-3100}:3100`
 
 ### 完成流程
 同 T-Smoke-1，commit message：`fix: align dev ports, docker deps, tts import path (T-Smoke-2)`
