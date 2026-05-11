@@ -12,10 +12,10 @@
     <p v-if="userStore.error" class="mt-4 rounded bg-red-950 px-3 py-2 text-sm text-red-100">{{ userStore.error }}</p>
 
     <div class="mt-6 flex gap-3">
-      <button class="rounded bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950" :disabled="userStore.loading" @click="userStore.createQrKey">
+      <button class="rounded bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950" :disabled="userStore.loading" @click="createQrKey">
         生成 Key
       </button>
-      <button class="rounded border border-zinc-700 px-4 py-2 text-sm" :disabled="!userStore.qrKey" @click="userStore.checkQr">
+      <button class="rounded border border-zinc-700 px-4 py-2 text-sm" :disabled="!userStore.qrKey" @click="checkQr">
         检查状态
       </button>
     </div>
@@ -23,7 +23,45 @@
 </template>
 
 <script setup lang="ts">
+import { onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
+
 import { useUserStore } from '../stores/user';
 
+const router = useRouter();
 const userStore = useUserStore();
+let pollTimer: number | undefined;
+
+const stopPolling = () => {
+  if (pollTimer) {
+    window.clearInterval(pollTimer);
+    pollTimer = undefined;
+  }
+};
+
+const checkQr = async () => {
+  const code = await userStore.checkQr();
+
+  if (code === 803) {
+    stopPolling();
+    await router.push('/playlists');
+  }
+};
+
+const startPolling = () => {
+  stopPolling();
+  pollTimer = window.setInterval(() => {
+    void checkQr();
+  }, 3000);
+};
+
+const createQrKey = async () => {
+  await userStore.createQrKey();
+
+  if (userStore.qrKey) {
+    startPolling();
+  }
+};
+
+onBeforeUnmount(stopPolling);
 </script>

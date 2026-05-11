@@ -23,6 +23,12 @@ export interface WeatherData {
   cityName?: string;
 }
 
+export interface User {
+  neteaseUid: string;
+  nickname?: string;
+  avatarUrl?: string;
+}
+
 export interface Segment {
   id: number;
   sessionId: string;
@@ -88,14 +94,18 @@ export const api = {
   auth: {
     qrKey: () => request<{ key: string }>('/api/auth/qr-key', { method: 'POST' }),
     qrCheck: (key: string) =>
-      request<{ code: number; cookie?: string; nickname?: string }>('/api/auth/qr-check', {
-        method: 'POST',
-        body: JSON.stringify({ key }),
-      }),
-    status: () => request<{ loggedIn: boolean; user: unknown | null }>('/api/auth/status'),
+      request<{ code: number; loggedIn?: boolean; user?: User; cookie?: string; nickname?: string }>(
+        '/api/auth/qr-check',
+        {
+          method: 'POST',
+          body: JSON.stringify({ key }),
+        },
+      ),
+    status: () => request<{ loggedIn: boolean; user: User | null }>('/api/auth/status'),
+    logout: () => request<{ loggedIn: boolean; user: null }>('/api/auth/logout', { method: 'POST' }),
   },
   playlists: {
-    list: (uid: string) => request<{ playlists: Playlist[] }>(`/api/playlists?uid=${encodeURIComponent(uid)}`),
+    list: () => request<{ playlists: Playlist[] }>('/api/playlists'),
     detail: (id: string) => request<{ playlistId: string; tracks: Track[] }>(`/api/playlists/${id}`),
     analyze: (id: string) =>
       request<{ analysis: unknown }>(`/api/playlists/${id}/analyze`, {

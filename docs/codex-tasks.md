@@ -712,7 +712,7 @@ frontend/src/main.ts     (修改：注册 service worker)
 
 ---
 
-## T-Smoke-1 — 登录闭环修复
+## [x] T-Smoke-1 — 登录闭环修复
 
 **优先级**: 🔴 Critical  
 **预计耗时**: 1 小时  

@@ -3,8 +3,7 @@
     <section class="rounded border border-zinc-800 bg-zinc-900 p-5">
       <h1 class="text-2xl font-semibold">歌单</h1>
       <div class="mt-4 flex flex-col gap-3 sm:flex-row">
-        <input v-model="uid" class="min-h-10 flex-1 rounded border border-zinc-700 bg-zinc-950 px-3 text-sm" placeholder="网易云 uid" />
-        <button class="rounded bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950" :disabled="loading || !uid" @click="loadPlaylists">
+        <button class="rounded bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950" :disabled="loading" @click="loadPlaylists">
           加载
         </button>
       </div>
@@ -12,7 +11,7 @@
     </section>
 
     <section v-if="loading" class="rounded border border-zinc-800 p-6 text-sm text-zinc-400">正在加载歌单...</section>
-    <section v-else-if="playlists.length === 0" class="rounded border border-zinc-800 p-6 text-sm text-zinc-400">输入 uid 后加载歌单。</section>
+    <section v-else-if="playlists.length === 0" class="rounded border border-zinc-800 p-6 text-sm text-zinc-400">登录后加载歌单。</section>
     <section v-else class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
       <PlaylistCard v-for="playlist in playlists" :key="playlist.id" :playlist="playlist" @select="selectPlaylist" />
     </section>
@@ -30,7 +29,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 import PlaylistCard from '../components/PlaylistCard.vue';
@@ -41,7 +40,6 @@ import { useSettingsStore } from '../stores/settings';
 const router = useRouter();
 const radioStore = useRadioStore();
 const settingsStore = useSettingsStore();
-const uid = ref('');
 const playlists = ref<Playlist[]>([]);
 const selected = ref<Playlist | null>(null);
 const analysis = ref('');
@@ -53,7 +51,7 @@ const loadPlaylists = async () => {
   error.value = '';
 
   try {
-    const response = await api.playlists.list(uid.value);
+    const response = await api.playlists.list();
     playlists.value = response.playlists;
   } catch (err) {
     error.value = err instanceof Error ? err.message : '加载失败';
@@ -84,4 +82,8 @@ const startRadio = async () => {
   await radioStore.start(selected.value, settingsStore.lat, settingsStore.lon, settingsStore.city);
   await router.push('/radio');
 };
+
+onMounted(() => {
+  void loadPlaylists();
+});
 </script>

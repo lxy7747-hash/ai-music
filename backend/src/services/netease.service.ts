@@ -26,6 +26,12 @@ export interface SearchResult {
   playlists: Playlist[];
 }
 
+export interface LoginStatus {
+  neteaseUid: string;
+  nickname?: string;
+  avatarUrl?: string;
+}
+
 interface NeteaseArtist {
   name?: string;
 }
@@ -60,6 +66,29 @@ interface NeteaseUrlItem {
   id: number | string;
   url?: string | null;
   code?: number;
+}
+
+interface NeteaseLoginStatusResponse {
+  data?: {
+    account?: {
+      id?: number | string;
+      userName?: string;
+    };
+    profile?: {
+      userId?: number | string;
+      nickname?: string;
+      avatarUrl?: string;
+    };
+  };
+  account?: {
+    id?: number | string;
+    userName?: string;
+  };
+  profile?: {
+    userId?: number | string;
+    nickname?: string;
+    avatarUrl?: string;
+  };
 }
 
 export class NeteaseApiError extends Error {
@@ -102,29 +131,46 @@ class NeteaseService {
     };
   }
 
-  async getUserPlaylists(uid: string): Promise<Playlist[]> {
+  async getLoginStatus(cookie: string): Promise<LoginStatus> {
+    const response = await this.request<NeteaseLoginStatusResponse>('/login/status', {}, cookie);
+    const profile = response.data?.profile ?? response.profile;
+    const account = response.data?.account ?? response.account;
+    const neteaseUid = profile?.userId ?? account?.id;
+
+    if (!neteaseUid) {
+      throw new NeteaseApiError('Netease login status response did not include user id');
+    }
+
+    return {
+      neteaseUid: String(neteaseUid),
+      nickname: profile?.nickname ?? account?.userName,
+      avatarUrl: profile?.avatarUrl,
+    };
+  }
+
+  async getUserPlaylists(uid: string, cookie?: string): Promise<Playlist[]> {
     const response = await this.request<{ playlist?: NeteasePlaylist[] }>('/user/playlist', {
       uid,
-    });
+    }, cookie);
 
     return (response.playlist ?? []).map(this.mapPlaylist);
   }
 
-  async getPlaylistTracks(playlistId: string, limit = 1000, offset = 0): Promise<Track[]> {
+  async getPlaylistTracks(playlistId: string, limit = 1000, offset = 0, cookie?: string): Promise<Track[]> {
     const response = await this.request<{ songs?: NeteaseSong[] }>('/playlist/track/all', {
       id: playlistId,
       limit: String(limit),
       offset: String(offset),
-    });
+    }, cookie);
 
     return (response.songs ?? []).map(this.mapTrack);
   }
 
-  async getTrackUrl(trackId: string, level = 'standard'): Promise<string | null> {
+  async getTrackUrl(trackId: string, level = 'standard', cookie?: string): Promise<string | null> {
     const response = await this.request<{ data?: NeteaseUrlItem[] }>('/song/url/v1', {
       id: trackId,
       level,
-    });
+    }, cookie);
     const first = response.data?.[0];
 
     if (!first || first.code === 403 || !first.url) {
@@ -134,10 +180,10 @@ class NeteaseService {
     return first.url;
   }
 
-  async getTrackDetail(trackIds: string[]): Promise<TrackDetail[]> {
+  async getTrackDetail(trackIds: string[], cookie?: string): Promise<TrackDetail[]> {
     const response = await this.request<{ songs?: NeteaseSong[] }>('/song/detail', {
       ids: trackIds.join(','),
-    });
+    }, cookie);
 
     return (response.songs ?? []).map((song) => ({
       ...this.mapTrack(song),
@@ -145,7 +191,7 @@ class NeteaseService {
     }));
   }
 
-  async search(keyword: string, type = 1): Promise<SearchResult> {
+  async search(keyword: string, type = 1, cookie?: string): Promise<SearchResult> {
     const response = await this.request<{
       result?: {
         songs?: NeteaseSong[];
@@ -154,7 +200,7 @@ class NeteaseService {
     }>('/cloudsearch', {
       keywords: keyword,
       type: String(type),
-    });
+    }, cookie);
 
     return {
       songs: (response.result?.songs ?? []).map(this.mapTrack),
@@ -162,9 +208,9 @@ class NeteaseService {
     };
   }
 
-  async checkMusic(trackId: string): Promise<boolean> {
+  async checkMusic(trackId: string, cookie?: string): Promise<boolean> {
     try {
-      const response = await this.request<{ success?: boolean }>('/check/music', { id: trackId });
+      const response = await this.request<{ success?: boolean }>('/check/music', { id: trackId }, cookie);
       return response.success ?? true;
     } catch (error) {
       if (error instanceof NeteaseApiError && error.status && error.status < 500) {
@@ -175,7 +221,7 @@ class NeteaseService {
     }
   }
 
-  private async request<T>(path: string, params: Record<string, string> = {}): Promise<T> {
+  private async request<T>(path: string, params: Record<string, string> = {}, cookie?: string): Promise<T> {
     const url = new URL(path, this.baseUrl);
     url.searchParams.set('timestamp', String(Date.now()));
 
@@ -187,7 +233,10 @@ class NeteaseService {
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
-      const response = await fetch(url, { signal: controller.signal });
+      const response = await fetch(url, {
+        headers: cookie ? { Cookie: cookie } : undefined,
+        signal: controller.signal,
+      });
 
       if (!response.ok) {
         throw new NeteaseApiError(`Netease API request failed: ${path}`, response.status);

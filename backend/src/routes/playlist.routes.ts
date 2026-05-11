@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { asyncHandler, HttpError } from '../middleware/error-handler.js';
 import { llmService } from '../services/llm.service.js';
 import { neteaseService } from '../services/netease.service.js';
+import { userService } from '../services/user.service.js';
 
 export const playlistRoutes = Router();
 
@@ -10,14 +11,14 @@ export const playlistRoutes = Router();
 
 playlistRoutes.get(
   '/',
-  asyncHandler(async (req, res) => {
-    const uid = String(req.query.uid ?? '');
+  asyncHandler(async (_req, res) => {
+    const user = userService.getCurrentUser();
 
-    if (!uid) {
-      throw new HttpError(400, 'UID_REQUIRED', 'uid query parameter is required until auth middleware is implemented');
+    if (!user) {
+      throw new HttpError(401, 'NOT_LOGGED_IN', 'login is required to load playlists');
     }
 
-    const playlists = await neteaseService.getUserPlaylists(uid);
+    const playlists = await neteaseService.getUserPlaylists(user.neteaseUid, user.cookie);
     res.json({ playlists });
   }),
 );
@@ -25,8 +26,14 @@ playlistRoutes.get(
 playlistRoutes.get(
   '/:id',
   asyncHandler(async (req, res) => {
+    const user = userService.getCurrentUser();
+
+    if (!user) {
+      throw new HttpError(401, 'NOT_LOGGED_IN', 'login is required to load playlist tracks');
+    }
+
     const playlistId = String(req.params.id);
-    const tracks = await neteaseService.getPlaylistTracks(playlistId);
+    const tracks = await neteaseService.getPlaylistTracks(playlistId, 1000, 0, user.cookie);
 
     res.json({
       playlistId,
@@ -38,7 +45,13 @@ playlistRoutes.get(
 playlistRoutes.post(
   '/:id/analyze',
   asyncHandler(async (req, res) => {
-    const tracks = await neteaseService.getPlaylistTracks(String(req.params.id));
+    const user = userService.getCurrentUser();
+
+    if (!user) {
+      throw new HttpError(401, 'NOT_LOGGED_IN', 'login is required to analyze playlists');
+    }
+
+    const tracks = await neteaseService.getPlaylistTracks(String(req.params.id), 1000, 0, user.cookie);
     const analysis = await llmService.analyzePlaylist(tracks);
 
     res.json({ analysis });
