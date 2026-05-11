@@ -34,8 +34,17 @@ export const useMediaSession = () => {
 
     navigator.mediaSession.setActionHandler('play', controls.play);
     navigator.mediaSession.setActionHandler('pause', controls.pause);
+    navigator.mediaSession.setActionHandler('previoustrack', null);
     navigator.mediaSession.setActionHandler('nexttrack', controls.next);
     navigator.mediaSession.setActionHandler('stop', controls.stop);
+  };
+
+  const updatePlaybackState = (isPlaying: boolean) => {
+    if (!('mediaSession' in navigator)) {
+      return;
+    }
+
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
   };
 
   watch(
@@ -44,8 +53,15 @@ export const useMediaSession = () => {
     { immediate: true },
   );
 
+  watch(
+    () => playerStore.isPlaying,
+    (isPlaying) => updatePlaybackState(isPlaying),
+    { immediate: true },
+  );
+
   return {
     registerControls,
     updateMetadata,
+    updatePlaybackState,
   };
 };
