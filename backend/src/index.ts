@@ -7,15 +7,15 @@ import express from 'express';
 
 dotenvConfig({ path: path.resolve(process.cwd(), '..', '.env') });
 
-import { config } from './config.js';
-import { initializeDatabase } from './db/schema.js';
-import { corsMiddleware } from './middleware/cors.js';
-import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
-import { authRoutes } from './routes/auth.routes.js';
-import { playlistRoutes } from './routes/playlist.routes.js';
-import { radioRoutes } from './routes/radio.routes.js';
-import { streamRoutes } from './routes/stream.routes.js';
-import { weatherRoutes } from './routes/weather.routes.js';
+const { config } = await import('./config.js');
+const { initializeDatabase } = await import('./db/schema.js');
+const { corsMiddleware } = await import('./middleware/cors.js');
+const { errorHandler, notFoundHandler } = await import('./middleware/error-handler.js');
+const { authRoutes } = await import('./routes/auth.routes.js');
+const { playlistRoutes } = await import('./routes/playlist.routes.js');
+const { radioRoutes } = await import('./routes/radio.routes.js');
+const { streamRoutes } = await import('./routes/stream.routes.js');
+const { weatherRoutes } = await import('./routes/weather.routes.js');
 
 const app = express();
 
