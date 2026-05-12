@@ -229,12 +229,17 @@ class NeteaseService {
       url.searchParams.set(key, value);
     }
 
+    const normalizedCookie = cookie ? this.normalizeCookie(cookie) : undefined;
+
+    if (normalizedCookie) {
+      url.searchParams.set('cookie', normalizedCookie);
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
       const response = await fetch(url, {
-        headers: cookie ? { Cookie: cookie } : undefined,
         signal: controller.signal,
       });
 
@@ -254,6 +259,40 @@ class NeteaseService {
     } finally {
       clearTimeout(timeout);
     }
+  }
+
+  private normalizeCookie(cookie: string): string {
+    const ignoredAttributes = new Set([
+      'domain',
+      'expires',
+      'httponly',
+      'max-age',
+      'path',
+      'samesite',
+      'secure',
+    ]);
+    const pairs: string[] = [];
+    const seen = new Set<string>();
+
+    for (const part of cookie.split(';')) {
+      const trimmed = part.trim();
+
+      if (!trimmed || !trimmed.includes('=')) {
+        continue;
+      }
+
+      const [rawName] = trimmed.split('=', 1);
+      const name = rawName.trim();
+
+      if (!name || ignoredAttributes.has(name.toLowerCase()) || seen.has(name)) {
+        continue;
+      }
+
+      seen.add(name);
+      pairs.push(trimmed);
+    }
+
+    return pairs.join('; ');
   }
 
   private readonly mapPlaylist = (playlist: NeteasePlaylist): Playlist => ({
