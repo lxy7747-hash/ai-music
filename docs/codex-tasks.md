@@ -839,7 +839,7 @@ frontend/src/main.ts     (修改：注册 service worker)
 
 ---
 
-## T-Smoke-3 — 本地后端集成验证（人机协作）
+## [x] T-Smoke-3 — 本地后端集成验证（人机协作）
 
 **优先级**: 🔴 Critical  
 **预计耗时**: 1 小时  
@@ -895,6 +895,7 @@ frontend/src/main.ts     (修改：注册 service worker)
 ### 完成标记
 - [ ] 全部通过 → 人类在本任务末尾写一行 `通过时间：YYYY-MM-DD HH:MM`
 - [ ] 部分通过 → 列出遗留问题和对策
+通过时间：2026-05-12 10:25
 
 ---
 
