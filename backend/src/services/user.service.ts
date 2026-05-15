@@ -1,4 +1,5 @@
 import { db } from '../db/connection.js';
+import { cookieCryptoService } from './cookie-crypto.service.js';
 
 export interface User {
   id: number;
@@ -34,7 +35,12 @@ class UserService {
         avatar_url = excluded.avatar_url,
         cookie = excluded.cookie
       `,
-    ).run(input.neteaseUid, input.nickname ?? 'Netease User', input.avatarUrl ?? null, input.cookie);
+    ).run(
+      input.neteaseUid,
+      input.nickname ?? 'Netease User',
+      input.avatarUrl ?? null,
+      cookieCryptoService.encrypt(input.cookie),
+    );
 
     const user = db.prepare('SELECT * FROM users WHERE netease_uid = ?').get(input.neteaseUid) as UserRow;
     return this.mapUser(user);
@@ -66,7 +72,7 @@ class UserService {
       neteaseUid: row.netease_uid,
       nickname: row.nickname,
       avatarUrl: row.avatar_url ?? undefined,
-      cookie: row.cookie,
+      cookie: cookieCryptoService.decrypt(row.cookie),
     };
   }
 }

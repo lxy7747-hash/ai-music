@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
   netease_uid TEXT NOT NULL UNIQUE,
   nickname TEXT NOT NULL,
   avatar_url TEXT,
-  cookie TEXT NOT NULL, -- TODO: encrypt before storing in T14
+  cookie TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
