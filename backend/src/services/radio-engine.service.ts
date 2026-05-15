@@ -91,7 +91,17 @@ class RadioEngineService {
     });
     const djAudioPath = audioCacheService.getCachePath(sessionId, 0);
 
-    await ttsService.synthesize(djScript, djAudioPath);
+    let ttsOk = true;
+
+    try {
+      await ttsService.synthesize(djScript, djAudioPath);
+    } catch (err) {
+      console.error(
+        '[RadioEngine] startSession TTS failed, skipping intro DJ:',
+        err instanceof Error ? err.message : err,
+      );
+      ttsOk = false;
+    }
 
     const transaction = db.transaction(() => {
       const userId = this.ensureSystemUser();
@@ -113,23 +123,34 @@ class RadioEngineService {
         JSON.stringify(weather),
       );
 
-      db.prepare(
-        `
-        INSERT INTO session_queue (
-          session_id, position, entry_type, dj_script, dj_audio_path, status
-        )
-        VALUES (?, 0, 'dj_announcement', ?, ?, 'pending')
-        `,
-      ).run(sessionId, djScript, djAudioPath);
+      if (ttsOk) {
+        db.prepare(
+          `
+          INSERT INTO session_queue (
+            session_id, position, entry_type, dj_script, dj_audio_path, status
+          )
+          VALUES (?, 0, 'dj_announcement', ?, ?, 'pending')
+          `,
+        ).run(sessionId, djScript, djAudioPath);
 
-      db.prepare(
-        `
-        INSERT INTO session_queue (
-          session_id, position, entry_type, track_id, status
-        )
-        VALUES (?, 1, 'song', ?, 'pending')
-        `,
-      ).run(sessionId, tracks[0]?.id);
+        db.prepare(
+          `
+          INSERT INTO session_queue (
+            session_id, position, entry_type, track_id, status
+          )
+          VALUES (?, 1, 'song', ?, 'pending')
+          `,
+        ).run(sessionId, tracks[0]?.id);
+      } else {
+        db.prepare(
+          `
+          INSERT INTO session_queue (
+            session_id, position, entry_type, track_id, status
+          )
+          VALUES (?, 0, 'song', ?, 'pending')
+          `,
+        ).run(sessionId, tracks[0]?.id);
+      }
     });
 
     transaction();
@@ -241,18 +262,28 @@ class RadioEngineService {
     });
     const djAudioPath = audioCacheService.getCachePath(sessionId, djPosition);
 
-    await ttsService.synthesize(djScript, djAudioPath);
+    let ttsOk = true;
+
+    try {
+      await ttsService.synthesize(djScript, djAudioPath);
+    } catch (err) {
+      console.error('[RadioEngine] TTS failed, will skip DJ segment:', err instanceof Error ? err.message : err);
+      ttsOk = false;
+    }
 
     db.transaction(() => {
-      db.prepare(
-        `
-        INSERT INTO session_queue (
-          session_id, position, entry_type, dj_script, dj_audio_path, status
-        )
-        VALUES (?, ?, 'dj_announcement', ?, ?, 'pending')
-        `,
-      ).run(sessionId, djPosition, djScript, djAudioPath);
+      if (ttsOk) {
+        db.prepare(
+          `
+          INSERT INTO session_queue (
+            session_id, position, entry_type, dj_script, dj_audio_path, status
+          )
+          VALUES (?, ?, 'dj_announcement', ?, ?, 'pending')
+          `,
+        ).run(sessionId, djPosition, djScript, djAudioPath);
+      }
 
+      const actualSongPosition = ttsOk ? songPosition : djPosition;
       db.prepare(
         `
         INSERT INTO session_queue (
@@ -260,7 +291,7 @@ class RadioEngineService {
         )
         VALUES (?, ?, 'song', ?, 'pending')
         `,
-      ).run(sessionId, songPosition, nextTrack.id);
+      ).run(sessionId, actualSongPosition, nextTrack.id);
     })();
 
     return this.getNextPendingSegment(sessionId);
