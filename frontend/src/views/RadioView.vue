@@ -3,10 +3,10 @@
     <NowPlaying :segment="radioStore.currentSegment" />
     <RadioControls
       :can-control="Boolean(radioStore.sessionId)"
-      @next="radioStore.next"
-      @pause="radioStore.pause"
-      @play="play"
-      @stop="radioStore.stop"
+      @next="next"
+      @pause="pause"
+      @play="resume"
+      @stop="stop"
     />
     <p v-if="radioStore.error" class="rounded bg-red-950 px-3 py-2 text-sm text-red-100">{{ radioStore.error }}</p>
     <SongList :items="radioStore.queue" />
@@ -24,7 +24,7 @@ import { api } from '../services/api';
 import { useRadioStore } from '../stores/radio';
 
 const radioStore = useRadioStore();
-const { load, play: playAudio } = useAudioPlayer();
+const { resume, pause, next, stop } = useAudioPlayer();
 let heartbeat: number | undefined;
 
 const clearHeartbeat = () => {
@@ -32,14 +32,6 @@ const clearHeartbeat = () => {
     window.clearInterval(heartbeat);
     heartbeat = undefined;
   }
-};
-
-const play = async () => {
-  if (radioStore.currentSegment) {
-    load(radioStore.currentSegment);
-  }
-
-  await playAudio();
 };
 
 const checkSession = async () => {

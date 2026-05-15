@@ -24,7 +24,7 @@ import { useAudioPlayer } from '../composables/useAudioPlayer';
 import { useRadioStore } from '../stores/radio';
 
 const radioStore = useRadioStore();
-const { isPlaying, currentItem, progress, play, pause, next } = useAudioPlayer();
+const { isPlaying, currentItem, progress, resume, pause, next } = useAudioPlayer();
 
 const title = computed(() => currentItem.value?.track?.name ?? currentItem.value?.djScript ?? '等待播放');
 const percent = computed(() =>
@@ -33,10 +33,10 @@ const percent = computed(() =>
 
 const toggle = () => {
   if (isPlaying.value) {
-    pause();
+    void pause();
     return;
   }
 
-  void play();
+  void resume();
 };
 </script>

@@ -30,7 +30,15 @@ export const useAudioPlayer = () => {
   };
 
   const prefetchNextSegment = async () => {
-    if (!radioStore.sessionId || isPrefetching.value || playerStore.currentItem?.type !== 'song') {
+    if (!radioStore.sessionId) {
+      return;
+    }
+
+    if (isPrefetching.value) {
+      return;
+    }
+
+    if (playerStore.currentItem?.type !== 'song') {
       return;
     }
 
@@ -60,13 +68,14 @@ export const useAudioPlayer = () => {
     }
   };
 
-  const pause = () => {
+  const pause = async () => {
     audio.pause();
     playerStore.setPlaying(false);
     updatePlaybackState(false);
+    await radioStore.pause();
   };
 
-  const stop = () => {
+  const stop = async () => {
     audio.pause();
     audio.removeAttribute('src');
     audio.load();
@@ -74,6 +83,22 @@ export const useAudioPlayer = () => {
     playerStore.setProgress(0, 0);
     playerStore.setCurrentItem(null);
     updatePlaybackState(false);
+    await radioStore.stop();
+  };
+
+  const resume = async () => {
+    if (!playerStore.currentItem) {
+      if (radioStore.currentSegment) {
+        load(radioStore.currentSegment);
+      } else {
+        return;
+      }
+    }
+
+    await audio.play();
+    playerStore.setPlaying(true);
+    updatePlaybackState(true);
+    await radioStore.resume();
   };
 
   const next = async () => {
@@ -98,7 +123,6 @@ export const useAudioPlayer = () => {
       return;
     }
 
-    load(radioStore.currentSegment);
     await play();
   };
 
@@ -153,7 +177,7 @@ export const useAudioPlayer = () => {
     audio.addEventListener('error', handleError);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    registerControls({ play: () => void play(), pause, next: () => void next(), stop });
+    registerControls({ play: () => void resume(), pause: () => void pause(), next: () => void next(), stop: () => void stop() });
     isInitialized = true;
   }
 
@@ -168,5 +192,6 @@ export const useAudioPlayer = () => {
     stop,
     addToQueue,
     load,
+    resume,
   };
 };
