@@ -899,7 +899,7 @@ frontend/src/main.ts     (修改：注册 service worker)
 
 ---
 
-## T-Smoke-4 — 前端 + 电台闭环验证（人机协作）
+## [x] T-Smoke-4 — 前端 + 电台闭环验证（人机协作）
 
 **优先级**: 🔴 Critical  
 **预计耗时**: 1 小时  
@@ -939,12 +939,20 @@ frontend/src/main.ts     (修改：注册 service worker)
 - 每修一个 bug 单独 commit：`fix: <问题> (T-Smoke-4)`
 
 ### 完成标记
-- [ ] 能从 0 启动到听完 DJ + 第一首歌 → 在本任务末尾写 `通过时间：YYYY-MM-DD HH:MM`
+- [x] 能从 0 启动到听完 DJ + 第一首歌
+通过时间：2026-05-15
 - [ ] 有遗留问题 → 列入本任务"遗留问题"小节
+
+### 遗留问题
+
+- L1（Gemini 不可达）→ 部署侧解决，列入 smoke-report.md
+- L2（下一段反复 DJ）→ ✅ 已修复 commit d0c4456
+- L3（心跳频率异常）→ 推迟到稳定运行后处理
+- 详细清单见 smoke-report.md 文末。
 
 ---
 
-## T-Smoke-5 — Docker 部署验证（可选）
+## [skip] T-Smoke-5 — Docker 部署验证（可选）
 
 **优先级**: 🟡 Medium  
 **预计耗时**: 30 分钟  
@@ -966,11 +974,16 @@ frontend/src/main.ts     (修改：注册 service worker)
 
 ### 完成标记
 - [ ] `通过时间：YYYY-MM-DD HH:MM`，加到本任务末尾
-- [ ] 或标记 skip + 原因
+- [x] 或标记 skip + 原因
+
+### Skip 原因
+
+推迟到真实部署到 NAS 时一并验证（详见 smoke-report.md「后续路线建议」）。
+Skip 时间：2026-05-15
 
 ---
 
-## T-Smoke-6 — 闭环报告（人类）
+## [x] T-Smoke-6 — 闭环报告（人类）
 
 **优先级**: 🟡 Medium  
 **预计耗时**: 15 分钟  
@@ -988,9 +1001,15 @@ frontend/src/main.ts     (修改：注册 service worker)
   - 遗留问题 + 对应后续任务编号（T14 / T17 / T18 等）
   - "本地启动步骤"定版（可粘贴给别人快速跑起来）
 
+### 实际产出
+
+- smoke-report.md（207 行，commit 786db95）
+- smoke-debug-notes.md（507 行，commit 786db95）
+完成时间：2026-05-15
+
 ### 完成标记
-- [ ] 提交文档：`docs: smoke test report (T-Smoke-6)`
-- [ ] T-Smoke 系列全部标 `[x]`
+- [x] 提交文档：commit 786db95
+- [x] T-Smoke 系列全部标 [x]
 
 ---
 
