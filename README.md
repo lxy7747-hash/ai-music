@@ -462,7 +462,20 @@ NODE_ENV=production
 DB_PATH=./data/radio.db
 TTS_CACHE_DIR=./data/tts-cache
 LOG_LEVEL=info
+COOKIE_ENCRYPTION_KEY=your_random_32_char_string
 ```
+
+### Security configuration
+
+Production deployments must set `COOKIE_ENCRYPTION_KEY` so persisted Netease login cookies are AES-encrypted in SQLite.
+
+Generate a key with:
+
+```bash
+openssl rand -base64 32
+```
+
+Keep this key safe and backed up. Losing it makes all already encrypted cookies unreadable, and users will need to log in again.
 
 ### Dockerfile
 
