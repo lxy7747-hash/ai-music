@@ -1,4 +1,6 @@
 import { db } from './connection.js';
+import { config } from '../config.js';
+import { cookieCryptoService } from '../services/cookie-crypto.service.js';
 
 const schema = `
 CREATE TABLE IF NOT EXISTS users (
@@ -88,4 +90,18 @@ ON session_queue (session_id, position);
 
 export const initializeDatabase = (): void => {
   db.exec(schema);
+
+  if (config.cookieEncryptionKey) {
+    const plaintextRows = db
+      .prepare("SELECT id, cookie FROM users WHERE cookie NOT LIKE 'aes-256-gcm:%'")
+      .all() as Array<{ id: number; cookie: string }>;
+
+    const update = db.prepare('UPDATE users SET cookie = ? WHERE id = ?');
+    const tx = db.transaction(() => {
+      for (const row of plaintextRows) {
+        update.run(cookieCryptoService.encrypt(row.cookie), row.id);
+      }
+    });
+    tx();
+  }
 };

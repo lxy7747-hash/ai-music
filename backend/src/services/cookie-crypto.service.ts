@@ -4,10 +4,16 @@ import { config } from '../config.js';
 
 const ENCRYPTED_PREFIX = 'aes-256-gcm:';
 
-class CookieCryptoService {
-  private readonly key = config.cookieEncryptionKey
-    ? createHash('sha256').update(config.cookieEncryptionKey).digest()
-    : null;
+export class CookieCryptoService {
+  private readonly key: Buffer | null;
+
+  constructor(key = config.cookieEncryptionKey, nodeEnv = config.nodeEnv) {
+    if (nodeEnv === 'production' && !key) {
+      throw new Error('COOKIE_ENCRYPTION_KEY is required in production');
+    }
+
+    this.key = key ? createHash('sha256').update(key).digest() : null;
+  }
 
   encrypt(cookie: string): string {
     if (!this.key) {
